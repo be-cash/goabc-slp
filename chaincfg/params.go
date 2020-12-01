@@ -247,10 +247,13 @@ var MainNetParams = Params{
 	Net:         wire.MainNet,
 	DefaultPort: "8333",
 	DNSSeeds: []DNSSeed{
-		{"seed.bchd.cash", true},
 		{"seed.bitcoinabc.org", true},
 		{"btccash-seeder.bitcoinunlimited.info", true},
 		{"seed-bch.bitcoinforks.org", true},
+		{"seeder.jasonbcox.com", true},
+		{"seederdns.fabien.cash", true},
+		{"seed.deadalnix.me", true},
+		{"seed.bchd.cash", true},
 	},
 
 	// Chain parameters
@@ -351,6 +354,7 @@ var MainNetParams = Params{
 				"https://ipfs.io/ipfs/QmYhcrsLgGfRTuxoZUCPCEj5xzZx5sAgV32Z7p1qPerJBr",
 			},
 		},
+		{Height: 661648, Hash: newHashFromStr("000000000000000004284c9d8b2c8ff731efeaec6be50729bdc9bd07f910757d")},
 	},
 
 	// Consensus rule change deployments.
@@ -430,7 +434,7 @@ var RegressionNetParams = Params{
 	ReduceMinDifficulty:      true,
 	NoDifficultyAdjustment:   true,
 	MinDiffReductionTime:     time.Minute * 20, // TargetTimePerBlock * 2
-	AsertDifficultyHalflife:  3600,             // 1 hour
+	AsertDifficultyHalflife:  2 * 24 * 3600,    // 2 days in seconds
 	GenerateSupported:        true,
 
 	// Checkpoints ordered from oldest to newest.
@@ -488,9 +492,10 @@ var TestNet3Params = Params{
 	Net:         wire.TestNet3,
 	DefaultPort: "18333",
 	DNSSeeds: []DNSSeed{
-		{"testnet-seed.bchd.cash", true},
 		{"testnet-seed.bitcoinabc.org", true},
 		{"testnet-seed-bch.bitcoinforks.org", true},
+		{"testnet-seed.deadalnix.me", true},
+		{"testnet-seed.bchd.cash", true},
 	},
 
 	// Chain parameters
@@ -519,7 +524,7 @@ var TestNet3Params = Params{
 	ReduceMinDifficulty:      true,
 	NoDifficultyAdjustment:   false,
 	MinDiffReductionTime:     time.Minute * 20, // TargetTimePerBlock * 2
-	AsertDifficultyHalflife:  3600,             // 1 hour
+	AsertDifficultyHalflife:  2 * 24 * 3600,    // 2 days in seconds
 	GenerateSupported:        false,
 
 	// Checkpoints ordered from oldest to newest.
@@ -537,6 +542,7 @@ var TestNet3Params = Params{
 		{Height: 1000007, Hash: newHashFromStr("00000000001ccb893d8a1f25b70ad173ce955e5f50124261bbbc50379a612ddf")},
 		{Height: 1341712, Hash: newHashFromStr("00000000fffc44ea2e202bd905a9fbbb9491ef9e9d5a9eed4039079229afa35b")},
 		{Height: 1378461, Hash: newHashFromStr("0000000099f5509b5f36b1926bcf82b21d936ebeadee811030dfbbb7fae915d7")},
+		{Height: 1421481, Hash: newHashFromStr("00000000062c7f32591d883c99fc89ebe74a83287c0f2b7ffeef72e62217d40b")},
 	},
 
 	// Consensus rule change deployments.
@@ -616,7 +622,7 @@ var SimNetParams = Params{
 	ReduceMinDifficulty:         true,
 	NoDifficultyAdjustment:      true,
 	MinDiffReductionTime:        time.Minute * 20, // TargetTimePerBlock * 2
-	AsertDifficultyHalflife:     3600,             // 1 hour
+	AsertDifficultyHalflife:     2 * 24 * 3600,    // 2 days in seconds
 	GenerateSupported:           true,
 
 	// Checkpoints ordered from oldest to newest.
