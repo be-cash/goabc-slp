@@ -29,7 +29,12 @@ func serveHTTP(ctx context.Context) error {
 
 	// Register gRPC server endpoint
 	// Note: Make sure the gRPC server is running properly and accessible
-	grpcGateway := runtime.NewServeMux()
+	grpcGateway := runtime.NewServeMux(
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
+			OrigName:     true,
+			EmitDefaults: true,
+		}),
+	)
 	var creds credentials.TransportCredentials
 	if *grpcRootCertPath != "" {
 		creds, err = credentials.NewClientTLSFromFile(*grpcRootCertPath, "")
@@ -58,7 +63,12 @@ func serveHTTP(ctx context.Context) error {
 	grpcGatewayRouter.NewRoute().HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// limit reading requests to max 50 MB
 		r.Body = http.MaxBytesReader(w, r.Body, 50*1024*1024)
-		grpcGateway.ServeHTTP(w, r) // this calls the gRPC server endpoint
+
+		if r.Method == "OPTIONS" { // browsers will do an OPTIONS request first to check CORS headers
+			w.WriteHeader(http.StatusNoContent)
+		} else {
+			grpcGateway.ServeHTTP(w, r) // this calls the gRPC server endpoint
+		}
 	})
 
 	// Start HTTP server

@@ -990,7 +990,17 @@ func (s *GrpcServer) GetAddressUnspentOutputs(ctx context.Context, req *pb.GetAd
 				}
 			}
 
-			if addrs[0].EncodeAddress() == addr.EncodeAddress() {
+			matchAddr := ""
+
+			switch typedAddr := addrs[0].(type) {
+			case *bchutil.AddressPubKeyHash, *bchutil.AddressScriptHash:
+				matchAddr = addrs[0].EncodeAddress()
+
+			case *bchutil.AddressPubKey:
+				matchAddr = typedAddr.AddressPubKeyHash().EncodeAddress()
+			}
+
+			if matchAddr == addr.EncodeAddress() {
 				utxo := &pb.UnspentOutput{
 					Outpoint: &pb.Transaction_Input_Outpoint{
 						Hash:  txHash.CloneBytes(),
@@ -1048,11 +1058,10 @@ func (s *GrpcServer) GetAddressUnspentOutputs(ctx context.Context, req *pb.GetAd
 	var tokenMetadata []*pb.TokenMetadata
 	if req.IncludeTokenMetadata && s.slpIndex != nil {
 		tokenMetadata = make([]*pb.TokenMetadata, 0)
-		for _hash := range tokenMetadataSet {
-			tm, err := s.buildTokenMetadata(_hash)
+		for hash := range tokenMetadataSet {
+			tm, err := s.buildTokenMetadata(hash)
 			if err != nil {
-				// don't want to return error, just log for debugging
-				log.Debugf("Could not build token metadata for %s", hex.EncodeToString(_hash[:]))
+				log.Debugf("Could not build slp token metadata for %v", hash)
 			}
 			if tm != nil && err == nil {
 				tokenMetadata = append(tokenMetadata, tm)
@@ -1143,15 +1152,15 @@ func (s *GrpcServer) GetUnspentOutput(ctx context.Context, req *pb.GetUnspentOut
 		req.IncludeMempool {
 		slpToken, err = s.getSlpToken(txnHash, req.Index)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "cannot get slp token for txid: %s", hex.EncodeToString(txnHash[:]))
+			return nil, status.Errorf(codes.Internal, "cannot get slp token for txid: %v", txnHash)
 		}
 		tokenID, err := chainhash.NewHash(slpToken.TokenId)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "cannot create hash for token Id: %s", slpToken.TokenId)
+			return nil, status.Errorf(codes.Internal, "cannot create hash for token id: %s", hex.EncodeToString(slpToken.TokenId))
 		}
 		tokenMetadata, err = s.buildTokenMetadata(*tokenID)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "cannot build token metadata for token id: %s", slpToken.TokenId)
+			return nil, status.Errorf(codes.Internal, "cannot build token metadata for token id: %s", hex.EncodeToString(slpToken.TokenId))
 		}
 	}
 
@@ -1239,7 +1248,7 @@ func (s *GrpcServer) GetTokenMetadata(ctx context.Context, req *pb.GetTokenMetad
 	for _, hash := range req.GetTokenIds() {
 		tokenID, err := chainhash.NewHash(hash)
 		if err != nil {
-			return nil, status.Errorf(codes.Aborted, "token ID hash %s is invalid: %v", hex.EncodeToString(hash), err)
+			return nil, status.Errorf(codes.Aborted, "token ID hash %s is invalid: %s", hex.EncodeToString(hash), err)
 		}
 
 		tm, err := s.buildTokenMetadata(*tokenID)
@@ -1344,16 +1353,16 @@ func (s *GrpcServer) GetTrustedSlpValidation(ctx context.Context, req *pb.GetTru
 
 		txid, err := chainhash.NewHash(query.PrevOutHash)
 		if err != nil {
-			return nil, status.Errorf(codes.Aborted, "invalid txn hash for txo %s:%s: %v", hex.EncodeToString(query.GetPrevOutHash()), string(query.GetPrevOutVout()), err)
+			return nil, status.Errorf(codes.Aborted, "invalid txn hash for txo %s:%s: %v", hex.EncodeToString(query.GetPrevOutHash()), fmt.Sprint(query.GetPrevOutVout()), err)
 		}
 
 		entry, err := s.getSlpIndexEntry(txid)
 		if err != nil {
-			return nil, status.Errorf(codes.Aborted, "txid is missing from slp validity set for txo: %s:%s: %v", hex.EncodeToString(query.GetPrevOutHash()), string(query.GetPrevOutVout()), err)
+			return nil, status.Errorf(codes.Aborted, "txid is missing from slp validity set for txo: %s:%s: %v", hex.EncodeToString(query.GetPrevOutHash()), fmt.Sprint(query.GetPrevOutVout()), err)
 		}
 
 		if query.PrevOutVout == 0 || query.PrevOutVout > 19 {
-			return nil, status.Errorf(codes.Aborted, "slp output index cannot be 0 or > 19 txo: %s:%s", hex.EncodeToString(query.GetPrevOutHash()), string(query.GetPrevOutVout()))
+			return nil, status.Errorf(codes.Aborted, "slp output index cannot be 0 or > 19 txo: %s:%s", hex.EncodeToString(query.GetPrevOutHash()), fmt.Sprint(query.GetPrevOutVout()))
 		}
 
 		slpMsg, err := v1parser.ParseSLP(entry.SlpOpReturn)
@@ -1386,7 +1395,7 @@ func (s *GrpcServer) GetTrustedSlpValidation(ctx context.Context, req *pb.GetTru
 				result.SlpAction = pb.SlpAction_SLP_NFT1_GROUP_SEND
 			}
 		default:
-			panic("trusted validation cannot return result for unknown slp version type")
+			return nil, status.Error(codes.Aborted, "trusted validation cannot return result for unknown slp version type")
 		}
 
 		switch msg := slpMsg.(type) {
@@ -1449,7 +1458,6 @@ func (s *GrpcServer) GetBip44HdAddress(ctx context.Context, req *pb.GetBip44HdAd
 
 	masterKey, err := hdkeychain.NewKeyFromString(xpub)
 	if err != nil {
-		fmt.Println(err)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid xpub: %v", err)
 	}
 
@@ -1460,13 +1468,11 @@ func (s *GrpcServer) GetBip44HdAddress(ctx context.Context, req *pb.GetBip44HdAd
 
 	ext, err := masterKey.Child(change)
 	if err != nil {
-		fmt.Println(err)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid xpub: %v", err)
 	}
 
 	extK, err := ext.Child(req.AddressIndex)
 	if err != nil {
-		fmt.Println(err)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid xpub: %v", err)
 	}
 
@@ -2689,15 +2695,24 @@ func (s *GrpcServer) manageSlpEntryCache() {
 		switch event := event.(type) {
 		case *rpcEventTxAccepted:
 			txDesc := event
-
+			log.Debugf("new mempool txn %v", txDesc.Tx.Hash())
 			if !isMaybeSlpTransaction(txDesc.Tx.MsgTx()) {
 				continue
 			}
-			err := s.slpIndex.AddMempoolTx(txDesc.Tx)
-			if err != nil {
-				log.Debugf("slp mempool add error: %v", err)
-				continue
-			}
+			log.Debugf("possible slp transaction added in mempool %v", txDesc.Tx.Hash())
+			s.db.View(func(dbTx database.Tx) error {
+				valid, err := s.slpIndex.AddPotentialSlpMempoolTransaction(dbTx, txDesc.Tx.MsgTx())
+				if err != nil {
+					log.Debugf("invalid slp transaction in mempool %v: %v", txDesc.Tx.Hash(), err)
+				} else if valid {
+					log.Debugf("valid slp transaction in mempool %v", txDesc.Tx.Hash())
+				} else {
+					log.Debugf("invalid slp transaction in mempool %v", txDesc.Tx.Hash())
+				}
+				return nil
+			})
+
+			continue
 
 		case *rpcEventBlockConnected:
 			block := event
@@ -2994,7 +3009,7 @@ func marshalTransaction(tx *bchutil.Tx, confirmations int32, blockHeader *wire.B
 
 		inputToken, err := s.getSlpToken(&input.PreviousOutPoint.Hash, input.PreviousOutPoint.Index)
 		if err != nil {
-			log.Debugf("error in getSlpToken for input %s:%s", hex.EncodeToString(input.PreviousOutPoint.Hash[:]), input.PreviousOutPoint.Index)
+			log.Debugf("no slp token for input %v:%s, error: %v", input.PreviousOutPoint.Hash, fmt.Sprint(input.PreviousOutPoint.Index), err)
 		}
 
 		in := &pb.Transaction_Input{

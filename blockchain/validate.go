@@ -999,7 +999,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *bchutil.Block, vi
 	phononActive := node.height > b.chainParams.PhononForkHeight
 
 	// If Axion hardfork is active we must enforce the new DAA and coinbase rule (if enabled).
-	axionActive := uint64(node.parent.CalcPastMedianTime().Unix()) >= b.chainParams.AxionActivationTime
+	axionActive := node.height > b.chainParams.AxionActivationHeight
 
 	// BIP0030 added a rule to prevent blocks which contain duplicate
 	// transactions that 'overwrite' older transactions which are not fully
