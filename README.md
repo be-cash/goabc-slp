@@ -1,19 +1,17 @@
-bchd
-====
+goabc-slp
+=========
 [![Build Status](https://travis-ci.org/gcash/bchd.png?branch=master)](https://travis-ci.org/gcash/bchd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gcash/bchd)](https://goreportcard.com/report/github.com/gcash/bchd)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/gcash/bchd)
 
-bchd is an alternative full node bitcoin cash implementation written in Go (golang).
+goabc-slp is an alternative full node eCash (XEC) implementation written in Go (golang).
 
-This project is a port of the [btcd](https://github.com/btcsuite/btcd) codebase to Bitcoin Cash. It provides a high powered
+This project is a port of the [bchd](https://github.com/gcash/bchd) codebase to eCash (XEC). It provides a high powered
 and reliable blockchain server which makes it a suitable backend to serve blockchain data to lite clients and block explorers
 or to power your local wallet.
 
-bchd does not include any wallet functionality by design as it makes the codebase more modular and easy to maintain. 
-The [bchwallet](https://github.com/gcash/bchwallet) is a separate application that provides a secure Bitcoin Cash wallet 
-that communicates with your running bchd instance via the API.
+goabc-slp does not include any wallet functionality by design as it makes the codebase more modular and easy to maintain. 
 
 ## Table of Contents
 
